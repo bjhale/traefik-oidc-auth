@@ -164,7 +164,7 @@ func (toa *TraefikOidcAuth) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 		}
 
 		if updateSession {
-			toa.storeSessionAndAttachCookie(session, rw)
+			toa.storeSessionAndAttachCookie(session, rw, claims)
 		}
 
 		// Forward the request
@@ -312,7 +312,7 @@ func (toa *TraefikOidcAuth) handleCallback(rw http.ResponseWriter, req *http.Req
 			IsAuthorized: isAuthorized,
 		}
 
-		toa.storeSessionAndAttachCookie(session, rw)
+		toa.storeSessionAndAttachCookie(session, rw, claims)
 
 		http.SetCookie(rw, &http.Cookie{
 			Name:     getCodeVerifierCookieName(toa.Config),

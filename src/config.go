@@ -55,6 +55,7 @@ type Config struct {
 	Authorization *AuthorizationConfig `json:"authorization"`
 
 	Headers []HeaderConfig `json:"headers"`
+	Cookies []CookieConfig `json:"cookies"`
 
 	BypassAuthenticationRule string `json:"bypass_authentication_rule"`
 
@@ -116,6 +117,14 @@ type ClaimAssertion struct {
 }
 
 type HeaderConfig struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+
+	// A reference to the parsed Value-template
+	template *template.Template
+}
+
+type CookieConfig struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 
