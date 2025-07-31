@@ -54,7 +54,7 @@ func TestSetCustomCookies(t *testing.T) {
 	}
 
 	// Call setCustomCookies
-	err := toa.setCustomCookies(rw, sessionState, claims)
+	err := setCustomCookies(toa.Config, rw, sessionState, claims)
 	if err != nil {
 		t.Fatalf("setCustomCookies failed: %v", err)
 	}
@@ -122,15 +122,11 @@ func TestSetCustomCookiesEmpty(t *testing.T) {
 		Cookies: []CookieConfig{},
 	}
 
-	toa := &TraefikOidcAuth{
-		Config: config,
-	}
-
 	rw := newMockResponseWriter()
 	sessionState := &session.SessionState{}
 	claims := map[string]interface{}{}
 
-	err := toa.setCustomCookies(rw, sessionState, claims)
+	err := setCustomCookies(config, rw, sessionState, claims)
 	if err != nil {
 		t.Fatalf("setCustomCookies failed with empty config: %v", err)
 	}
@@ -152,15 +148,11 @@ func TestSetCustomCookiesTemplateError(t *testing.T) {
 		},
 	}
 
-	toa := &TraefikOidcAuth{
-		Config: config,
-	}
-
 	rw := newMockResponseWriter()
 	sessionState := &session.SessionState{}
 	claims := map[string]interface{}{}
 
-	err := toa.setCustomCookies(rw, sessionState, claims)
+	err := setCustomCookies(config, rw, sessionState, claims)
 	if err != nil {
 		t.Fatalf("setCustomCookies should handle template errors gracefully: %v", err)
 	}

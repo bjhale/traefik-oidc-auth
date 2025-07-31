@@ -1,12 +1,10 @@
 package src
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
-	"text/template"
 
 	"github.com/sevensolutions/traefik-oidc-auth/src/logging"
 	"github.com/sevensolutions/traefik-oidc-auth/src/session"
@@ -190,74 +188,12 @@ func (toa *TraefikOidcAuth) storeSessionAndAttachCookie(session *session.Session
 	setChunkedCookies(toa.Config, rw, getSessionCookieName(toa.Config), encryptedSessionTicket)
 
 	// Set custom cookies
-	err = toa.setCustomCookies(rw, session, claims)
+	err = setCustomCookies(toa.Config, rw, session, claims)
 	if err != nil {
 		toa.logger.Log(logging.LevelError, "Error while setting custom cookies: %s", err.Error())
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func (toa *TraefikOidcAuth) setCustomCookies(rw http.ResponseWriter, session *session.SessionState, claims map[string]interface{}) error {
-	if toa.Config.Cookies != nil {
-		evalContext := make(map[string]interface{})
-
-		evalContext["claims"] = claims
-		evalContext["accessToken"] = session.AccessToken
-		evalContext["idToken"] = session.IdToken
-		evalContext["refreshToken"] = session.RefreshToken
-
-		for i := range toa.Config.Cookies {
-			cookie := &toa.Config.Cookies[i]
-			if cookie.Value != "" {
-				if cookie.template == nil {
-					tpl, err := template.New("").Parse(cookie.Value)
-
-					if err != nil {
-						return err
-					}
-
-					cookie.template = tpl
-				}
-
-				var renderedValue bytes.Buffer
-				err := cookie.template.Execute(&renderedValue, evalContext)
-
-				cookieValue := ""
-				if err == nil {
-					cookieValue = renderedValue.String()
-				} else {
-					cookieValue = err.Error()
-				}
-
-				// Set cookie with all configuration options
-				http.SetCookie(rw, &http.Cookie{
-					Name:     cookie.Name,
-					Value:    cookieValue,
-					Path:     getPathOrDefault(cookie.Path),
-					Domain:   cookie.Domain,
-					Secure:   cookie.Secure,
-					HttpOnly: cookie.HttpOnly,
-					SameSite: parseCookieSameSite(cookie.SameSite),
-					MaxAge:   cookie.MaxAge,
-				})
-			} else {
-				// Set empty cookie with all configuration options
-				http.SetCookie(rw, &http.Cookie{
-					Name:     cookie.Name,
-					Value:    "",
-					Path:     getPathOrDefault(cookie.Path),
-					Domain:   cookie.Domain,
-					Secure:   cookie.Secure,
-					HttpOnly: cookie.HttpOnly,
-					SameSite: parseCookieSameSite(cookie.SameSite),
-					MaxAge:   cookie.MaxAge,
-				})
-			}
-		}
-	}
-
-	return nil
 }
 
 func getPathOrDefault(path string) string {
