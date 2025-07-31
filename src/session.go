@@ -223,30 +223,48 @@ func (toa *TraefikOidcAuth) setCustomCookies(rw http.ResponseWriter, session *se
 				var renderedValue bytes.Buffer
 				err := cookie.template.Execute(&renderedValue, evalContext)
 
+				cookieValue := ""
 				if err == nil {
-					http.SetCookie(rw, &http.Cookie{
-						Name:  cookie.Name,
-						Value: renderedValue.String(),
-						Path:  "/",
-					})
+					cookieValue = renderedValue.String()
 				} else {
-					http.SetCookie(rw, &http.Cookie{
-						Name:  cookie.Name,
-						Value: err.Error(),
-						Path:  "/",
-					})
+					cookieValue = err.Error()
 				}
-			} else {
+
+				// Set cookie with all configuration options
 				http.SetCookie(rw, &http.Cookie{
-					Name:  cookie.Name,
-					Value: "",
-					Path:  "/",
+					Name:     cookie.Name,
+					Value:    cookieValue,
+					Path:     getPathOrDefault(cookie.Path),
+					Domain:   cookie.Domain,
+					Secure:   cookie.Secure,
+					HttpOnly: cookie.HttpOnly,
+					SameSite: parseCookieSameSite(cookie.SameSite),
+					MaxAge:   cookie.MaxAge,
+				})
+			} else {
+				// Set empty cookie with all configuration options
+				http.SetCookie(rw, &http.Cookie{
+					Name:     cookie.Name,
+					Value:    "",
+					Path:     getPathOrDefault(cookie.Path),
+					Domain:   cookie.Domain,
+					Secure:   cookie.Secure,
+					HttpOnly: cookie.HttpOnly,
+					SameSite: parseCookieSameSite(cookie.SameSite),
+					MaxAge:   cookie.MaxAge,
 				})
 			}
 		}
 	}
 
 	return nil
+}
+
+func getPathOrDefault(path string) string {
+	if path == "" {
+		return "/"
+	}
+	return path
 }
 
 func createSessionCookie(config *Config) *http.Cookie {

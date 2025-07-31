@@ -12,16 +12,24 @@ func TestSetCustomCookies(t *testing.T) {
 	config := &Config{
 		Cookies: []CookieConfig{
 			{
-				Name:  "custom-user-id",
-				Value: "{{.claims.sub}}",
+				Name:     "custom-user-id",
+				Value:    "{{.claims.sub}}",
+				Path:     "/app",
+				Domain:   "example.com",
+				Secure:   true,
+				HttpOnly: true,
+				SameSite: "strict",
+				MaxAge:   3600,
 			},
 			{
 				Name:  "user-email",
 				Value: "{{.claims.email}}",
+				// Use defaults for other fields
 			},
 			{
 				Name:  "static-cookie",
 				Value: "static-value",
+				Path:  "/",
 			},
 		},
 	}
@@ -55,6 +63,30 @@ func TestSetCustomCookies(t *testing.T) {
 	setCookieHeaders := rw.HeaderMap["Set-Cookie"]
 	if len(setCookieHeaders) != 3 {
 		t.Fatalf("Expected 3 Set-Cookie headers, got %d", len(setCookieHeaders))
+	}
+
+	// Verify the first cookie has all configuration options
+	firstCookie := setCookieHeaders[0]
+	if !strings.Contains(firstCookie, "custom-user-id=user123") {
+		t.Fatalf("Expected first cookie to contain 'custom-user-id=user123', got: %s", firstCookie)
+	}
+	if !strings.Contains(firstCookie, "Path=/app") {
+		t.Fatalf("Expected first cookie to contain 'Path=/app', got: %s", firstCookie)
+	}
+	if !strings.Contains(firstCookie, "Domain=example.com") {
+		t.Fatalf("Expected first cookie to contain 'Domain=example.com', got: %s", firstCookie)
+	}
+	if !strings.Contains(firstCookie, "Secure") {
+		t.Fatalf("Expected first cookie to contain 'Secure', got: %s", firstCookie)
+	}
+	if !strings.Contains(firstCookie, "HttpOnly") {
+		t.Fatalf("Expected first cookie to contain 'HttpOnly', got: %s", firstCookie)
+	}
+	if !strings.Contains(firstCookie, "SameSite=Strict") {
+		t.Fatalf("Expected first cookie to contain 'SameSite=Strict', got: %s", firstCookie)
+	}
+	if !strings.Contains(firstCookie, "Max-Age=3600") {
+		t.Fatalf("Expected first cookie to contain 'Max-Age=3600', got: %s", firstCookie)
 	}
 
 	// Verify the cookies contain expected values
