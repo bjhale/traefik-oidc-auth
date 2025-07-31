@@ -1,11 +1,14 @@
 package src
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"strconv"
+	"text/template"
 	"time"
 
+	"github.com/sevensolutions/traefik-oidc-auth/src/session"
 	"github.com/sevensolutions/traefik-oidc-auth/src/utils"
 )
 
@@ -144,4 +147,58 @@ func getSessionCookieName(config *Config) string {
 }
 func makeCookieName(config *Config, name string) string {
 	return fmt.Sprintf("%s.%s", config.CookieNamePrefix, name)
+}
+
+func setCustomCookies(config *Config, rw http.ResponseWriter, session *session.SessionState, claims map[string]interface{}) error {
+	if config.Cookies != nil {
+		evalContext := make(map[string]interface{})
+
+		evalContext["claims"] = claims
+		evalContext["accessToken"] = session.AccessToken
+		evalContext["idToken"] = session.IdToken
+		evalContext["refreshToken"] = session.RefreshToken
+
+		for i := range config.Cookies {
+			cookie := &config.Cookies[i]
+
+			if cookie.Value == "" || cookie.Name == "" {
+				// If cookie name or value is empty, we can skip it
+				continue
+			}
+
+			if cookie.template == nil {
+				tpl, err := template.New("").Parse(cookie.Value)
+
+				if err != nil {
+					return err
+				}
+
+				cookie.template = tpl
+			}
+
+			var renderedValue bytes.Buffer
+			err := cookie.template.Execute(&renderedValue, evalContext)
+
+			cookieValue := ""
+			if err == nil {
+				cookieValue = renderedValue.String()
+			} else {
+				cookieValue = err.Error()
+			}
+
+			// Set cookie with all configuration options
+			http.SetCookie(rw, &http.Cookie{
+				Name:     cookie.Name,
+				Value:    cookieValue,
+				Path:     getPathOrDefault(cookie.Path),
+				Domain:   cookie.Domain,
+				Secure:   cookie.Secure,
+				HttpOnly: cookie.HttpOnly,
+				SameSite: parseCookieSameSite(cookie.SameSite),
+				MaxAge:   cookie.MaxAge,
+			})
+		}
+	}
+
+	return nil
 }

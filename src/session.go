@@ -168,7 +168,7 @@ func (toa *TraefikOidcAuth) validateToken(session *session.SessionState) (bool, 
 	return toa.validateTokenLocally(token)
 }
 
-func (toa *TraefikOidcAuth) storeSessionAndAttachCookie(session *session.SessionState, rw http.ResponseWriter) {
+func (toa *TraefikOidcAuth) storeSessionAndAttachCookie(session *session.SessionState, rw http.ResponseWriter, claims map[string]interface{}) {
 	sessionTicket, err := toa.SessionStorage.StoreSession(session.Id, session)
 	if err != nil {
 		toa.logger.Log(logging.LevelError, "Failed to store session: %s", err.Error())
@@ -186,6 +186,21 @@ func (toa *TraefikOidcAuth) storeSessionAndAttachCookie(session *session.Session
 	}
 
 	setChunkedCookies(toa.Config, rw, getSessionCookieName(toa.Config), encryptedSessionTicket)
+
+	// Set custom cookies
+	err = setCustomCookies(toa.Config, rw, session, claims)
+	if err != nil {
+		toa.logger.Log(logging.LevelError, "Error while setting custom cookies: %s", err.Error())
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func getPathOrDefault(path string) string {
+	if path == "" {
+		return "/"
+	}
+	return path
 }
 
 func createSessionCookie(config *Config) *http.Cookie {
