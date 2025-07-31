@@ -44,6 +44,7 @@ But: If you're using YAML-files for configuration you can use [traefik's templat
 | `UnauthorizedBehavior`* | no | `string` | `Challenge` | Defines the behavior for unauthenticated requests. `Challenge` means the user will be redirected to the IDP's login page, whereas `Unauthorized` will simply return a 401 status response. |
 | `Authorization` | no | [`Authorization`](#authorization) | *none* | Authorization Configuration. See *Authorization* block. |
 | `Headers` | no | [`Header`](#header) | *none* | Supplies a list of headers which will be attached to the upstream request. See *Header* block. |
+| `Cookies` | no | [`Cookies`](#cookies) | *none* | Allows you to set custom cookies. See *Cookies* block. |
 | `BypassAuthenticationRule`* | no | `string` | *none* | Specifies an optional rule to bypass authentication. See [Bypass Authentication Rule](./bypass-authentication-rule.md) for more details. |
 | `ErrorPages` | no | [`ErrorPages`](#error-pages) | *none* | Allows you to customize some error pages. See *ErrorPages* block. |
 
@@ -158,6 +159,48 @@ Headers:
   - Name: X-Oidc-Groups-Json-Array
     Value: '[{{with .claims.groups}}{{ range $i, $g := . }}{{if $i}},{{end}}"{{js $g}}"{{end}}{{end}}]'
 ```
+:::
+
+## Cookies Block {#cookies}
+
+| Name | Required | Type | Default | Description |
+|---|---|---|---|---|
+| `Name` | yes | `string` | *none* | The name of the cookie which should be added when session is authenticated. |
+| `Value` | yes | `string` | *none* | The value of the header, which can use [Go-Templates](https://pkg.go.dev/text/template). Please see the info below. |
+| `Path` | no | `string` | `/` | The path to which the cookie should be assigned to. |
+| `Domain` | no | `string` | *none* | An optional domain to which the cookie should be assigned to. See [Callback URLs](./callback-uri.md) for examples. |
+| `Secure` | no | `bool` | `true` | Whether the cookie should be marked secure. |
+| `HttpOnly` | no | `bool` | `true` | Whether the cookie should be marked http-only. |
+| `SameSite` | no | `string` | `default` | Can be one of `default`, `none`, `lax`, `strict`. |
+| `MaxAge` | no | `int` | `0` | Cookie time-to-live in seconds.  0 (default) is a ephemeral session cookie. |
+
+By using Go-Templates you have access to the following attributes:
+
+| Template | Description |
+|---|---|
+| `{{ .accessToken }}` | The OAuth Access Token |
+| `{{ .idToken }}` | The OAuth Id Token |
+| `{{ .claims.* }}` | Replace `*` with the name or path to your desired claim |
+
+:::info
+Because [traefik configuration files already support Go-templating](https://doc.traefik.io/traefik/providers/file/#go-templating), you need to *escape* your templates in a weird way. Here are some examples:
+
+```yml
+Headers:
+  - Name: "CF_Authorization"
+    Value: "{{`{{ .accessToken }}`}}"
+```
+
+The outer curly braces and backticks are used to escape the inner curly braces.
+
+Note that this *only* applies for configuring Traefik from a YAML file, where it performs its own template expansion.  If you are using the Kubernetes CRDs, you should *not* escape, just template as usual:
+
+```yml
+Headers:
+  - Name: CF_Authorization
+    Value: '{{ .accessToken }}'
+```
+
 :::
 
 ## ErrorPages Block {#error-pages}
